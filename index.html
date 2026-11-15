@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Our Cozy Tree 🎄</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;font-family:'Fredoka',ui-rounded,system-ui,sans-serif;color:#fff4e0;background:linear-gradient(#10163a,#3a1f5c 55%,#8a3d5a)}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.pill{background:rgba(34,18,52,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:2px solid rgba(255,206,140,.4);border-radius:20px;box-shadow:0 6px 22px rgba(0,0,0,.4)}
+button{font:inherit;color:inherit;cursor:pointer;border:0;border-radius:14px;background:rgba(255,255,255,.12);padding:8px 12px;transition:background .15s,transform .15s}
+button:hover{background:rgba(255,255,255,.24)}
+button:active{transform:scale(.94)}
+button.on{background:#ffb347;color:#3a1c00}
+#top{position:fixed;top:max(10px,env(safe-area-inset-top));left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;pointer-events:none}
+#top .pill{pointer-events:auto;padding:8px 14px;font-weight:600;display:flex;align-items:center;gap:8px;font-size:15px}
+#cnt{font-weight:400;opacity:.75;font-size:13px}
+#dot{width:10px;height:10px;border-radius:50%;background:#aaa;flex:none}
+#dot.ok{background:#6df29a;box-shadow:0 0 9px #6df29a}#dot.wait{background:#ffd166}#dot.bad{background:#ff6b6b}
+#tools{position:fixed;left:10px;top:50%;transform:translateY(-58%);display:flex;flex-direction:column;gap:6px;padding:8px}
+#tools button{width:56px;display:flex;flex-direction:column;align-items:center;font-size:20px;padding:6px 2px}
+small{font-size:10px;line-height:1.1;text-align:center}
+#dock{position:fixed;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));padding:8px}
+#tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:7px}
+#tabs button{white-space:nowrap;font-size:14px;flex:none}
+#items{display:flex;gap:8px;overflow-x:auto;padding:3px 3px 5px}
+.it{flex:0 0 76px;height:76px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px;border-radius:16px}
+.it i{font-style:normal;font-size:30px;line-height:1}
+.it.on{outline:3px solid #ffb347;outline-offset:1px}
+#hint{position:fixed;left:0;right:0;bottom:178px;text-align:center;font-size:13px;opacity:.8;pointer-events:none;transition:opacity 1.5s;text-shadow:0 1px 6px #000}
+#modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,5,30,.55);padding:16px;z-index:5}
+.card{padding:26px 24px;max-width:390px;width:100%;text-align:center}
+.card h1{font-size:27px;margin:0 0 8px}
+.card p{margin:0 0 16px;opacity:.88;line-height:1.4}
+.card button.big{width:100%;padding:13px;font-size:18px;background:#ffb347;color:#3a1c00;font-weight:600}
+.row{display:flex;gap:8px;margin:12px 0}
+.row input{flex:1;min-width:0;font:inherit;font-size:17px;text-transform:uppercase;text-align:center;padding:10px;border-radius:14px;border:2px solid rgba(255,206,140,.45);background:rgba(0,0,0,.25);color:#fff4e0;letter-spacing:2px}
+#invbox{display:none;margin-top:14px;padding:12px;border-radius:14px;background:rgba(0,0,0,.25)}
+#code{font-size:30px;letter-spacing:5px;font-weight:600;color:#ffd27a}
+.link{background:none;text-decoration:underline;opacity:.75;margin-top:6px}
+@media(max-width:560px){#tools button{width:48px;font-size:17px}#hint{bottom:170px}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="top">
+  <div class="pill">🎄 Our Cozy Tree <span id="cnt"></span></div>
+  <div class="pill"><span id="dot"></span><span id="status">Solo mode</span><button id="invite">💌 Invite</button></div>
+</div>
+
+<div id="tools" class="pill">
+  <button id="tPlace" class="on">🎨<small>Decorate</small></button>
+  <button id="tErase">🧽<small>Erase</small></button>
+  <button id="undo">↩️<small>Undo</small></button>
+  <button id="snowBtn" class="on">❄️<small>Snow</small></button>
+  <button id="clear">🗑️<small>Clear</small></button>
+</div>
+
+<div id="hint">Drag to rotate · pinch or scroll to zoom · tap the tree to hang a decoration</div>
+
+<div id="dock" class="pill"><div id="tabs"></div><div id="items"></div></div>
+
+<div id="modal">
+  <div class="pill card">
+    <h1>🎄 Decorate together</h1>
+    <p>Create a room, send the invite link to your favorite person, and watch every ornament appear on both screens instantly.</p>
+    <button class="big" id="create">✨ Create a room</button>
+    <div id="invbox">
+      <div>Room code</div><div id="code"></div>
+      <button id="copy" style="margin-top:10px">📋 Copy invite link</button>
+      <p style="margin:10px 0 0;font-size:14px">Waiting for your partner to open the link…</p>
+    </div>
+    <div class="row"><input id="joinCode" maxlength="5" placeholder="CODE"><button id="join">Join</button></div>
+    <button class="link" id="solo">Just decorate on my own</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<script>
+const T=THREE,$=s=>document.querySelector(s),clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const mt=(c,o)=>new T.MeshToonMaterial(Object.assign({color:c},o));
+const gl=(c,i=.2)=>mt(c,{emissive:c,emissiveIntensity:i});
+const mesh=(g,m,x=0,y=0,z=0)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);return o;};
+const hex=c=>'#'+c.toString(16).padStart(6,'0');
+
+/* ---------- tree geometry ---------- */
+const TIERS=[[.6,2,2.1],[1.6,1.9,1.7],[2.6,1.8,1.35],[3.6,1.6,.95],[4.5,1.3,.6]];
+const trad=y=>Math.max(.12,...TIERS.map(([y0,h,r])=>y>=y0&&y<=y0+h?r*(1-(y-y0)/h):0));
+
+/* ---------- decoration builders ---------- */
+function bauble(c,stripe){const g=new T.Group();g.add(mesh(new T.SphereGeometry(.16,20,16),gl(c,.15)),mesh(new T.CylinderGeometry(.04,.05,.05,8),mt(0xffd75e),0,.17,0),mesh(new T.TorusGeometry(.03,.008,6,12),mt(0xffd75e),0,.22,0));
+ if(stripe)for(const y of[-.07,.05]){const t=mesh(new T.TorusGeometry(Math.sqrt(.0256-y*y),.012,6,24),mt(0xffffff),0,y,0);t.rotation.x=Math.PI/2;g.add(t);}return g;}
+function ext(shape,c,s=1,d=.06){const geo=new T.ExtrudeGeometry(shape,{depth:d,bevelEnabled:true,bevelSize:.02,bevelThickness:.02,bevelSegments:2});geo.center();geo.scale(s,s,s);const g=new T.Group();g.add(new T.Mesh(geo,gl(c,.25)));return g;}
+function starShape(){const s=new T.Shape();for(let i=0;i<10;i++){const r=i%2?.08:.19,a=Math.PI/2+i*Math.PI/5,x=Math.cos(a)*r,y=Math.sin(a)*r;i?s.lineTo(x,y):s.moveTo(x,y);}s.closePath();return s;}
+function heartShape(){const s=new T.Shape();s.moveTo(0,-.2);s.bezierCurveTo(-.3,0,-.22,.2,-.1,.2);s.bezierCurveTo(-.04,.2,0,.15,0,.1);s.bezierCurveTo(0,.15,.04,.2,.1,.2);s.bezierCurveTo(.22,.2,.3,0,0,-.2);return s;}
+function bell(c){const g=new T.Group(),p=[[0,.17],[.05,.16],[.1,.08],[.14,-.04],[.19,-.13],[0,-.13]].map(a=>new T.Vector2(a[0],a[1]));
+ g.add(new T.Mesh(new T.LatheGeometry(p,16),mt(c,{side:T.DoubleSide,emissive:c,emissiveIntensity:.2})),mesh(new T.SphereGeometry(.04,10,8),mt(0x7a4a1a),0,-.14,0));return g;}
+function drop(c){const g=new T.Group(),m=gl(c,.15);g.add(mesh(new T.SphereGeometry(.1,16,12),m,0,-.05,0),mesh(new T.ConeGeometry(.085,.2,16),m,0,.08,0),mesh(new T.SphereGeometry(.025,8,6),mt(0xffd75e),0,.2,0));return g;}
+function diamond(c){const m=mesh(new T.OctahedronGeometry(.13,0),mt(c,{flatShading:true,emissive:c,emissiveIntensity:.3}));m.scale.y=1.5;const g=new T.Group();g.add(m);return g;}
+function icicle(){const m=mesh(new T.ConeGeometry(.06,.4,10),mt(0xcdf1ff,{emissive:0x9fdcff,emissiveIntensity:.35}));m.rotation.x=Math.PI;const g=new T.Group();g.add(m);return g;}
+function flake(c,s=1){const g=new T.Group(),m=gl(c,.4);for(let i=0;i<3;i++){const b=mesh(new T.BoxGeometry(.4*s,.035*s,.035*s),m);b.rotation.z=i*Math.PI/3;g.add(b);}
+ for(let i=0;i<6;i++){const a=i*Math.PI/3;g.add(mesh(new T.SphereGeometry(.035*s,6,6),m,Math.cos(a)*.2*s,Math.sin(a)*.2*s,0));}return g;}
+function bulb(c){const g=new T.Group(),h=mesh(new T.SphereGeometry(.15,12,10),new T.MeshBasicMaterial({color:c,transparent:true,opacity:.3,depthWrite:false,blending:T.AdditiveBlending}));
+ g.add(mesh(new T.SphereGeometry(.07,12,10),new T.MeshBasicMaterial({color:c})),h);g.userData.halo=h;return g;}
+function tinsel(c,y){const R=trad(y)+.14,pts=[],n=140;for(let i=0;i<n;i++){const a=i/n*Math.PI*2,r=R+.05*Math.sin(a*18);pts.push(new T.Vector3(Math.cos(a)*r,.07*Math.sin(a*9),Math.sin(a)*r));}
+ const g=new T.Group();g.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts,true),300,.035,6,true),gl(c,.4)));return g;}
+function gift(c,r){const g=new T.Group(),m=mt(r);g.add(mesh(new T.BoxGeometry(.26,.22,.26),mt(c)),mesh(new T.BoxGeometry(.05,.225,.27),m),mesh(new T.BoxGeometry(.27,.225,.05),m),mesh(new T.TorusGeometry(.04,.015,6,12),m,-.04,.15,0),mesh(new T.TorusGeometry(.04,.015,6,12),m,.04,.15,0));return g;}
+function cane(){const g=new T.Group(),cu=new T.CatmullRomCurve3([[0,-.2,0],[0,.08,0],[.03,.18,0],[.1,.22,0],[.17,.16,0],[.17,.08,0]].map(a=>new T.Vector3(...a)));
+ g.add(new T.Mesh(new T.TubeGeometry(cu,40,.03,8,false),mt(0xffffff)));for(let i=0;i<7;i++){const p=cu.getPoint(i/7+.04),s=mesh(new T.SphereGeometry(.036,8,6),mt(0xe63946),p.x,p.y,p.z);s.scale.y=.5;g.add(s);}return g;}
+function snowman(){const g=new T.Group(),w=mt(0xffffff);g.add(mesh(new T.SphereGeometry(.12,14,10),w,0,-.1,0),mesh(new T.SphereGeometry(.09,14,10),w,0,.06,0),mesh(new T.SphereGeometry(.065,14,10),w,0,.19,0),mesh(new T.CylinderGeometry(.05,.05,.07,10),mt(0x2a2a3a),0,.27,0));
+ const n=mesh(new T.ConeGeometry(.02,.09,8),mt(0xff8a1f),0,.19,.08);n.rotation.x=Math.PI/2;const sc=mesh(new T.TorusGeometry(.065,.02,6,14),mt(0xe63946),0,.12,0);sc.rotation.x=Math.PI/2;g.add(n,sc);
+ for(const x of[-.025,.025])g.add(mesh(new T.SphereGeometry(.01,6,6),mt(0x111111),x,.21,.058));return g;}
+function ginger(){const g=new T.Group(),b=mt(0xc47a3a);g.add(mesh(new T.SphereGeometry(.07,12,10),b,0,.14,0),mesh(new T.BoxGeometry(.12,.16,.05),b,0,.01,0),mesh(new T.BoxGeometry(.26,.045,.05),b,0,.04,0),mesh(new T.BoxGeometry(.045,.12,.05),b,-.035,-.12,0),mesh(new T.BoxGeometry(.045,.12,.05),b,.035,-.12,0));
+ for(const x of[-.025,.025])g.add(mesh(new T.SphereGeometry(.01,6,6),mt(0x222222),x,.15,.065));for(const y of[.03,-.02])g.add(mesh(new T.SphereGeometry(.014,6,6),mt(0xe63946),0,y,.03));return g;}
+function pinecone(){const g=new T.Group(),m=mt(0x8a5a32);[[.12,.12,.07],[.1,.12,-.02],[.06,.1,-.1]].forEach(([r,h,y])=>{const c=mesh(new T.ConeGeometry(r,h,8),m,0,y,0);c.rotation.x=Math.PI;g.add(c);});g.add(mesh(new T.SphereGeometry(.02,6,6),mt(0xffd75e),0,.15,0));return g;}
+function pompom(c){const g=new T.Group();g.add(mesh(new T.IcosahedronGeometry(.13,1),mt(c,{flatShading:true})));return g;}
+function bow(c){const g=new T.Group(),m=mt(c);for(const s of[-1,1]){const w=mesh(new T.ConeGeometry(.14,.3,10),m,s*.17,0,0);w.rotation.z=s*Math.PI/2;g.add(w);const t=mesh(new T.BoxGeometry(.07,.28,.03),m,s*.08,-.22,0);t.rotation.z=s*.35;g.add(t);}g.add(mesh(new T.SphereGeometry(.07,10,8),mt(0xffc233)));return g;}
+
+/* ---------- catalog (56 decorations) ---------- */
+const D=[],def=(cat,name,e,col,fn,o)=>D.push(Object.assign({cat,name,e,col,fn},o));
+const PAL={Ruby:0xe63946,Gold:0xffc233,Silver:0xdfe6ee,Sky:0x4cc9f0,Mint:0x80ed99,Pink:0xff8fc7,Purple:0x9b5de5,Orange:0xff922b,Teal:0x14b8a6,Snow:0xffffff,Navy:0x3a5ccc,Copper:0xc9733a};
+Object.entries(PAL).forEach(([n,c])=>def('Baubles',n+' bauble','●',c,()=>bauble(c),{ch:1}));
+[['Ruby',0xe63946],['Sky',0x4cc9f0],['Mint',0x80ed99]].forEach(([n,c])=>def('Baubles',n+' stripes','◍',c,()=>bauble(c,1),{ch:1}));
+[['Gold',0xffc233],['Silver',0xdfe6ee],['Ruby',0xe63946]].forEach(([n,c])=>def('Shapes',n+' star','⭐',c,()=>ext(starShape(),c)));
+[['Red',0xe63946],['Pink',0xff8fc7],['Purple',0x9b5de5]].forEach(([n,c])=>def('Shapes',n+' heart','💖',c,()=>ext(heartShape(),c,1.1)));
+[['Gold',0xffc233],['Silver',0xdfe6ee]].forEach(([n,c])=>def('Shapes',n+' bell','🔔',c,()=>bell(c)));
+[['Pink',0xff8fc7],['Teal',0x14b8a6],['Orange',0xff922b]].forEach(([n,c])=>def('Shapes',n+' drop','💧',c,()=>drop(c)));
+[['Ice',0x9fe8ff],['Amethyst',0xb07cff],['Emerald',0x3ddc84]].forEach(([n,c])=>def('Shapes',n+' gem','💎',c,()=>diamond(c)));
+def('Shapes','Icicle','🧊',0x9fdcff,icicle);def('Shapes','Snowflake','❄️',0xbfeaff,()=>flake(0xeaf8ff));
+[['Warm',0xffd27a],['Red',0xff4d5e],['Green',0x5dff8a],['Blue',0x5cc8ff],['Pink',0xff7ad9],['White',0xffffff]].forEach(([n,c])=>def('Lights',n+' light','💡',c,()=>bulb(c)));
+[['Gold',0xffc233],['Silver',0xdfe6ee],['Ruby',0xe63946],['Green',0x2fbf71],['Blue',0x4c8dff],['Pink',0xff8fc7]].forEach(([n,c])=>def('Tinsel',n+' tinsel','≋',c,it=>tinsel(c,it.p[1]),{tin:1,ch:1}));
+[['Red',0xe63946,0xffffff],['Green',0x2fbf71,0xffc233],['Blue',0x4c8dff,0xffffff]].forEach(([n,c,r])=>def('Cozy',n+' gift','🎁',c,()=>gift(c,r),{fl:.2}));
+def('Cozy','Candy cane','🍭',0xe63946,cane);def('Cozy','Snowman','⛄',0x9fdcff,snowman,{fl:.38});def('Cozy','Gingerbread','🍪',0xc47a3a,ginger);def('Cozy','Pine cone','🌰',0x8a5a32,pinecone);
+[['White',0xffffff],['Red',0xe63946],['Pink',0xff8fc7]].forEach(([n,c])=>def('Cozy',n+' pompom','🧶',c,()=>pompom(c)));
+def('Toppers','Golden star','🌟',0xffc233,()=>ext(starShape(),0xffc233,2.2,.08),{top:1});def('Toppers','Red bow','🎀',0xe63946,()=>bow(0xe63946),{top:1,sc:1.4});def('Toppers','Ice flake','💠',0x9fe8ff,()=>flake(0x9fe8ff,1.7),{top:1});
+
+/* ---------- scene ---------- */
+const cv=$('#c'),R=new T.WebGLRenderer({canvas:cv,antialias:true,alpha:true});R.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new T.Scene(),cam=new T.PerspectiveCamera(50,1,.1,200);
+function resize(){R.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();}addEventListener('resize',resize);resize();
+scene.add(new T.HemisphereLight(0xbfd4ff,0x7a4a5a,.95));
+const key=new T.DirectionalLight(0xffe2b8,.9);key.position.set(5,8,6);scene.add(key);
+const glow=new T.PointLight(0xffa850,1.4,14);glow.position.set(0,2.5,3);scene.add(glow);
+
+const tex=f=>{const c=document.createElement('canvas');c.width=c.height=64;f(c.getContext('2d'));return new T.CanvasTexture(c);};
+const dot=tex(x=>{const g=x.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'#fff');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,64,64);});
+
+const hitT=[];
+TIERS.forEach(([y0,h,r],i)=>{const m=mesh(new T.ConeGeometry(r,h,16),mt(i%2?0x2f9e5b:0x24884c),0,y0+h/2,0);scene.add(m,mesh(new T.ConeGeometry(r*1.04,h*1.03,16),new T.MeshBasicMaterial({color:0x0b2a1a,side:T.BackSide}),0,y0+h/2,0));hitT.push(m);});
+scene.add(mesh(new T.CylinderGeometry(.3,.38,.9,14),mt(0x7a4a2a),0,.45,0));
+const floor=mesh(new T.CircleGeometry(18,48),mt(0xe8f1ff));floor.rotation.x=-Math.PI/2;
+const skirt=mesh(new T.CylinderGeometry(2.7,2.9,.18,40),mt(0xc2303d),0,.09,0),rim=mesh(new T.TorusGeometry(2.8,.08,8,48),mt(0xfff4e0),0,.18,0);rim.rotation.x=Math.PI/2;
+scene.add(floor,skirt,rim);const hitAll=[...hitT,floor,skirt];
+for(let i=0;i<10;i++){const a=i*.63+.3,d=5+Math.random()*7,m=mesh(new T.SphereGeometry(1,16,10),mt(0xffffff),Math.cos(a)*d,0,Math.sin(a)*d);m.scale.set(1.4+Math.random(),.4,1.2+Math.random()*.6);scene.add(m);}
+for(let i=0;i<16;i++){const a=i/16*6.28+Math.random()*.3,d=10+Math.random()*6,p=new T.Group();[0,1,2].forEach(j=>p.add(mesh(new T.ConeGeometry(1.2-j*.3,1.6,8),mt(j?0x1f6b4a:0x1a5a40),0,.8+j,0)));p.add(mesh(new T.ConeGeometry(.3,.4,8),mt(0xffffff),0,3.35,0));p.position.set(Math.cos(a)*d,0,Math.sin(a)*d);p.scale.setScalar(.8+Math.random()*1.1);scene.add(p);}
+const moon=new T.Sprite(new T.SpriteMaterial({map:dot,color:0xfff0c8,depthWrite:false}));moon.scale.set(14,14,1);moon.position.set(-28,24,-50);scene.add(moon);
+const stp=[];for(let i=0;i<260;i++){const a=Math.random()*6.28,e=Math.random()*1.2+.1;stp.push(Math.cos(a)*Math.cos(e)*70,Math.sin(e)*70,Math.sin(a)*Math.cos(e)*70);}
+const starsMat=new T.PointsMaterial({map:dot,size:1.8,transparent:true,depthWrite:false,color:0xfff2c0}),stars=new T.Points(new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(stp,3)),starsMat);scene.add(stars);
+const N=650,sp=new Float32Array(N*3),sv=new Float32Array(N);for(let i=0;i<N;i++){sp[i*3]=(Math.random()-.5)*26;sp[i*3+1]=Math.random()*14;sp[i*3+2]=(Math.random()-.5)*26;sv[i]=.4+Math.random()*.8;}
+const sg=new T.BufferGeometry();sg.setAttribute('position',new T.BufferAttribute(sp,3));
+const snow=new T.Points(sg,new T.PointsMaterial({map:dot,size:.22,transparent:true,depthWrite:false}));scene.add(snow);
+const itemsG=new T.Group();scene.add(itemsG);
+const pcur=new T.Sprite(new T.SpriteMaterial({map:tex(x=>{x.font='44px serif';x.textAlign='center';x.textBaseline='middle';x.fillText('✨',32,34);}),depthTest:false,transparent:true}));pcur.scale.set(.7,.7,1);pcur.visible=false;scene.add(pcur);
+const ptarget=new T.Vector3();let pseen=0;
+
+/* ---------- items state ---------- */
+const items=new Map();let mine=[];
+const uid=()=>Math.random().toString(36).slice(2,10);
+const cnt=()=>$('#cnt').textContent=items.size+' hung';
+function del(id){const v=items.get(id);if(!v)return;itemsG.remove(v.g);items.delete(id);cnt();}
+function put(it){if(items.has(it.id)||!D[it.k])return;const d=D[it.k];
+ if(d.top)[...items.keys()].forEach(i=>{if(D[items.get(i).it.k].top)del(i);});
+ const g=d.fn(it);Object.assign(g.userData,{id:it.id,bs:d.tin?1:(d.sc||1)*1.5,born:performance.now(),ph:(it.r||0)*3,kind:d.tin?'t':d.top?'top':it.p[1]<.6?'f':'h'});
+ g.position.set(it.p[0],it.p[1],it.p[2]);if(!d.tin&&!d.top)g.rotation.y=it.r||0;g.scale.setScalar(.001);itemsG.add(g);items.set(it.id,{it,g});cnt();}
+function clearAll(){[...items.keys()].forEach(del);mine=[];}
+
+/* ---------- interaction ---------- */
+let sel=0,tool='place',cat='Baubles';
+const ray=new T.Raycaster(),m2=new T.Vector2();
+function pick(e){const r=cv.getBoundingClientRect();m2.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(m2,cam);}
+function where(e){pick(e);const d=D[sel],h=ray.intersectObjects(hitAll,false)[0];if(!h)return null;const onTree=hitT.includes(h.object);
+ if(d.top)return[0,5.9,0];
+ if(d.tin)return onTree?[0,clamp(h.point.y,.9,5.1),0]:null;
+ if(onTree){const n=h.face.normal;return[h.point.x+n.x*.2,h.point.y+n.y*.2,h.point.z+n.z*.2];}
+ return[h.point.x,h.point.y+(d.fl||.22),h.point.z];}
+let ghost=null;
+function setGhost(p){if(ghost)scene.remove(ghost);const d=D[sel];ghost=d.fn({p:p||[0,3,0]});ghost.userData.y=p?p[1]:0;
+ ghost.traverse(o=>{if(o.material){o.material=o.material.clone();o.material.transparent=true;o.material.opacity=.55;}});
+ ghost.scale.setScalar(d.tin?1:(d.sc||1)*1.5);ghost.visible=false;scene.add(ghost);}
+let lastCur=0;
+function hover(e){if(e.pointerType!=='mouse')return;const p=where(e);
+ if(!p||tool!=='place'){ghost.visible=false;return;}
+ if(D[sel].tin&&Math.abs(ghost.userData.y-p[1])>.08)setGhost(p);
+ ghost.visible=true;ghost.position.set(...p);
+ const n=performance.now();if(n-lastCur>40){lastCur=n;send({t:'cur',p});}}
+function place(e){const p=where(e);if(!p)return;const it={id:uid(),k:sel,p:p.map(v=>Math.round(v*100)/100),r:Math.random()*6.28};put(it);mine.push(it.id);send({t:'add',it});}
+function erase(e){pick(e);const h=ray.intersectObjects(itemsG.children,true)[0];if(!h)return;let o=h.object;while(o.parent&&o.parent!==itemsG)o=o.parent;const id=o.userData.id;if(id){del(id);send({t:'rm',id});}}
+
+const view={az:.4,pol:1.25,d:11,taz:.4,tpol:1.25,td:11},tgt=new T.Vector3(0,2.7,0),ptrs=new Map();let moved=0,pinch=0;
+const pd=()=>{const a=[...ptrs.values()];return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1;};
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});if(ptrs.size===1)moved=0;if(ptrs.size===2){pinch=pd();moved=99;}});
+cv.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);
+ if(!p){hover(e);return;}
+ const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);
+ if(ptrs.size===1){if(moved>8){view.taz-=dx*.008;view.tpol=clamp(view.tpol-dy*.006,.5,1.65);if(ghost)ghost.visible=false;}}
+ else if(ptrs.size===2){const n=pd();view.td=clamp(view.td*pinch/n,5,18);pinch=n;}});
+cv.addEventListener('pointerup',e=>{if(ptrs.size===1&&moved<8){tool==='place'?place(e):erase(e);}ptrs.delete(e.pointerId);});
+cv.addEventListener('pointercancel',e=>ptrs.delete(e.pointerId));
+cv.addEventListener('wheel',e=>{e.preventDefault();view.td=clamp(view.td*(1+e.deltaY*.001),5,18);},{passive:false});
+
+/* ---------- UI ---------- */
+const CATS=['Baubles','Shapes','Lights','Tinsel','Cozy','Toppers'];
+function renderTabs(){const t=$('#tabs');t.innerHTML='';CATS.forEach(c=>{const b=document.createElement('button');b.textContent=c+' '+D.filter(d=>d.cat===c).length;b.className=c===cat?'on':'';b.onclick=()=>{cat=c;renderTabs();renderItems();};t.appendChild(b);});}
+function renderItems(){const box=$('#items');box.innerHTML='';D.forEach((d,i)=>{if(d.cat!==cat)return;const b=document.createElement('button');b.className='it'+(i===sel?' on':'');
+ b.style.background=`linear-gradient(${hex(d.col)}66,${hex(d.col)}22)`;b.innerHTML=`<i${d.ch?` style="color:${hex(d.col)};text-shadow:0 0 6px #0006"`:''}>${d.e}</i><small>${d.name}</small>`;
+ b.onclick=()=>{sel=i;tool='place';setTool();renderItems();setGhost();};box.appendChild(b);});}
+function setTool(){$('#tPlace').classList.toggle('on',tool==='place');$('#tErase').classList.toggle('on',tool==='erase');if(ghost&&tool!=='place')ghost.visible=false;}
+$('#tPlace').onclick=()=>{tool='place';setTool();};$('#tErase').onclick=()=>{tool='erase';setTool();};
+$('#undo').onclick=()=>{const id=mine.pop();if(id){del(id);send({t:'rm',id});}};
+$('#clear').onclick=()=>{if(confirm('Clear the whole tree for both of you?')){clearAll();send({t:'clr'});}};
+$('#snowBtn').onclick=e=>{snow.visible=!snow.visible;e.currentTarget.classList.toggle('on',snow.visible);};
+setTimeout(()=>$('#hint').style.opacity=0,10000);
+
+/* ---------- realtime (WebRTC peer-to-peer via PeerJS) ---------- */
+let peer=null,conn=null,room='',isHost=false;
+const status=(t,k)=>{$('#status').textContent=t;$('#dot').className=k||'';};
+const send=m=>{if(conn&&conn.open)conn.send(m);};
+const newCode=()=>Math.random().toString(36).slice(2,7).toUpperCase();
+const link=()=>location.href.split('#')[0]+'#'+room;
+function leave(){if(peer)try{peer.destroy();}catch(e){}peer=conn=null;pcur.visible=false;}
+function onMsg(m){if(m.t==='state'){clearAll();m.items.forEach(put);}else if(m.t==='add')put(m.it);else if(m.t==='rm')del(m.id);else if(m.t==='clr')clearAll();
+ else if(m.t==='cur'){ptarget.set(...m.p);if(!pcur.visible)pcur.position.copy(ptarget);pseen=performance.now();}}
+function wire(c){c.on('open',()=>{status('Together in room '+room+' 💞','ok');$('#modal').style.display='none';if(isHost)c.send({t:'state',items:[...items.values()].map(v=>v.it)});});
+ c.on('data',onMsg);c.on('close',()=>{status(isHost?'Partner left · waiting for them…':'Disconnected — tap Invite to rejoin','wait');pcur.visible=false;});}
+function host(){leave();room=newCode();isHost=true;status('Creating room…','wait');peer=new Peer('cozytree-'+room);
+ peer.on('open',()=>{status('Room '+room+' · waiting for your partner…','wait');$('#code').textContent=room;$('#invbox').style.display='block';});
+ peer.on('connection',c=>{if(conn&&conn.open)conn.close();conn=c;wire(c);});
+ peer.on('error',e=>{if(e.type==='unavailable-id')host();else status('Connection problem ('+e.type+')','bad');});}
+function join(r){leave();room=r.trim().toUpperCase();if(!room)return;isHost=false;status('Joining room '+room+'…','wait');peer=new Peer();
+ peer.on('open',()=>{conn=peer.connect('cozytree-'+room,{reliable:true});wire(conn);});
+ peer.on('error',e=>status(e.type==='peer-unavailable'?'Room not found — check the code':'Connection problem ('+e.type+')','bad'));}
+$('#create').onclick=host;
+$('#join').onclick=()=>join($('#joinCode').value);
+$('#solo').onclick=()=>$('#modal').style.display='none';
+$('#invite').onclick=()=>$('#modal').style.display='flex';
+$('#copy').onclick=async e=>{try{await navigator.clipboard.writeText(link());e.currentTarget.textContent='Copied! 💌';}catch(x){prompt('Copy this invite link:',link());}};
+if(location.hash.length>1){$('#modal').style.display='none';join(location.hash.slice(1));}
+
+/* ---------- loop ---------- */
+renderTabs();renderItems();setGhost();cnt();
+let last=performance.now();
+function loop(now){requestAnimationFrame(loop);const dt=Math.min((now-last)/1000,.05),t=now/1000;last=now;
+ for(const{g}of items.values()){const u=g.userData,a=(now-u.born)/600,k=a>=1?1:Math.max(0,1-Math.exp(-6*a)*Math.cos(12*a));g.scale.setScalar(Math.max(.001,u.bs*k));
+  if(u.kind==='h')g.rotation.z=Math.sin(t*1.6+u.ph)*.09;else if(u.kind==='top')g.rotation.y=t*1.2;
+  if(u.halo){const s=1+.35*Math.sin(t*3+u.ph);u.halo.scale.setScalar(s);u.halo.material.opacity=.22+.14*Math.sin(t*3+u.ph);}}
+ glow.intensity=1.35+Math.sin(t*5)*.1+Math.sin(t*11.3)*.05;starsMat.opacity=.75+.25*Math.sin(t*2);
+ if(snow.visible){for(let i=0;i<N;i++){sp[i*3+1]-=sv[i]*dt;sp[i*3]+=Math.sin(t+i)*.003;if(sp[i*3+1]<0)sp[i*3+1]=14;}sg.attributes.position.needsUpdate=true;}
+ pcur.visible=!!(conn&&conn.open)&&now-pseen<4000;if(pcur.visible){pcur.position.lerp(ptarget,.35);pcur.material.rotation=Math.sin(t*4)*.3;}
+ for(const k of['az','pol','d'])view[k]+=(view['t'+k]-view[k])*.15;
+ cam.position.set(tgt.x+view.d*Math.sin(view.pol)*Math.sin(view.az),tgt.y+view.d*Math.cos(view.pol),tgt.z+view.d*Math.sin(view.pol)*Math.cos(view.az));cam.lookAt(tgt);
+ R.render(scene,cam);}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
